@@ -108,6 +108,27 @@ def get_sample_tweets() -> list[dict]:
     ]
 
 
+MOCK_TRANSLATION = """🤖 ORYGINAŁ: My biological age is 37. I am 46. [...]
+🧑 PO LUDZKU: Mam 46 lat, ale wyniki moich badań są jak u 37-latka. Robię to od 2 lat.
+💊 KONTEKST: "Wiek biologiczny" mierzony testami epigenetycznymi jest kontrowersyjny — dokładność tych testów jest wciąż przedmiotem badań.
+
+---
+
+🤖 ORYGINAŁ: I scored 99th percentile on the epigenetic clock test. [...]
+🧑 PO LUDZKU: Test starzenia DNA pokazał, że mój układ odpornościowy działa jak u 31-latka. Efekt bezwzględnej optymalizacji.
+💊 KONTEKST: Zegar epigenetyczny (np. Horvath clock) mierzy wzorce metylacji DNA — obiecująca technologia, ale nie złoty standard diagnostyczny.
+
+---
+
+🤖 ORYGINAŁ: I don't experience cravings. My algorithms decide what I eat. [...]
+🧑 PO LUDZKU: Nie jem tego na co mam ochotę — jem według algorytmu. Zamiast walczyć z głodem, po prostu wyeliminowałem wybór.
+💊 KONTEKST: Bryan dosłownie wyoutsourcował decyzje żywieniowe do tabeli w Excelu. Działa, ale 99.9% ludzi tego nie wytrzyma.
+
+---
+
+[MOCK — uruchom bez flagi --mock żeby zobaczyć prawdziwe tłumaczenie przez Claude]"""
+
+
 def translate_tweets(tweets: list[dict], client: anthropic.Anthropic) -> str:
     """Używa Claude do tłumaczenia listy tweetów."""
     tweets_block = "\n\n---\n\n".join(
@@ -140,20 +161,39 @@ def print_header():
 
 
 def main():
+    use_samples = "--sample" in sys.argv
+    use_mock = "--mock" in sys.argv
+
     api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
+    if not api_key and not use_mock:
         print("❌ Brak ANTHROPIC_API_KEY.")
         print("   Ustaw go: export ANTHROPIC_API_KEY='sk-ant-...'")
-        print("   Lub skopiuj .env.example → .env i uzupełnij klucz.")
+        print("   Lub przetestuj bez klucza: python agent.py --mock")
         sys.exit(1)
 
-    client = anthropic.Anthropic(api_key=api_key)
-
-    use_samples = "--sample" in sys.argv
+    client = anthropic.Anthropic(api_key=api_key) if api_key else None
     numeric_args = [a for a in sys.argv[1:] if not a.startswith("--")]
     count = int(numeric_args[0]) if numeric_args else 5
 
     print_header()
+
+    if use_mock:
+        print("🎭 Tryb MOCK — symulacja bez klucza API.\n")
+        tweets = get_sample_tweets()[:count]
+
+        print(f"✅ Przykładowe tweety: {len(tweets)}\n")
+        print("📊 STATYSTYKI:")
+        for i, tweet in enumerate(tweets):
+            s = tweet["stats"]
+            print(f"  #{i+1} ({tweet['date']}): ❤️  {s['likes']}  🔁 {s['retweets']}  💬 {s['comments']}")
+        print("\n⏳ [MOCK] Symulacja wywołania Claude...\n")
+        print("=" * 60)
+        print(MOCK_TRANSLATION)
+        print()
+        print("=" * 60)
+        print("  Don't die. 💊")
+        print("=" * 60)
+        return
 
     if use_samples:
         print("📋 Tryb demo — używam przykładowych tweetów.\n")
